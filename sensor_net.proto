@@ -1,0 +1,35 @@
+// An example protocol definition for communication between a master controller
+// and simple data collection devices.
+
+syntax = "proto2";
+
+
+message DeviceIdentification {
+    required int32  id = 1;
+    optional string name = 2;
+}
+
+message Connect {
+    required DeviceIdentification id = 1;
+}
+
+message Response {
+    required DeviceIdentification id = 1;
+}
+
+message Command {
+    required int32 cmd = 1;
+}
+
+message Msg {
+    enum MsgType {
+        CONNECT     = 0;
+        RESPONSE    = 1;
+        COMMAND     = 2;
+    }
+
+    required MsgType    type = 1;
+    optional Connect    connect_msg = 2;
+    optional Response   response_msg = 3;
+    optional Command    command_msg = 4;
+}
