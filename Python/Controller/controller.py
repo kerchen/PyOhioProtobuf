@@ -4,15 +4,17 @@ import time
 import sensor_net_pb2
 import socket
 import SocketServer
+from collections import namedtuple
 
+Node = namedtuple("Node", "address id name")
 attached_nodes = []
 
-def handle_connect(con_msg):
+def handle_connect(con_msg, client_address):
     print "  Device ID: {}".format(con_msg.id.id)
     if con_msg.id.HasField('name'):
         print "  Device name: " + con_msg.id.name
-    #socket.sendto(data.upper(), self.client_address)
-    #attached_nodes.append(self.client_address)
+    n = Node(client_address, con_msg.id.id, con_msg.id.name)
+    attached_nodes.append(n)
 
 class UDPHandler(SocketServer.BaseRequestHandler):
     def handle(self):
@@ -24,7 +26,7 @@ class UDPHandler(SocketServer.BaseRequestHandler):
         msg.ParseFromString(data[1:])
         print "  Msg type: {}".format(msg.type)
         if msg.type == sensor_net_pb2.Msg.CONNECT:
-            handle_connect(msg.connect_msg)
+            handle_connect(msg.connect_msg, self.client_address)
 
 
 class ThreadedServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
@@ -44,10 +46,22 @@ if __name__ == "__main__":
     while True:
         if len(attached_nodes):
             print("{} node(s) attached".format(len(attached_nodes)))
-        for c in attached_nodes:
+        for n in attached_nodes:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.sendto("Tickle\n", c)
-            print "Tickled {0}:{1}".format(c[0], c[1])
+            msg = sensor_net_pb2.Msg()
+            msg.type = sensor_net_pb2.Msg.COMMAND
+
+            cmd_msg = sensor_net_pb2.Command()
+            cmd_msg.cmd = 33
+
+            msg.command_msg.CopyFrom(cmd_msg)
+            payload = msg.SerializeToString()
+
+            header = bytearray(1)
+            header[0] = len(payload)
+
+            sock.sendto(header+payload, n.address)
+            print "Sent command to {0}:{1}".format(n.id, n.name if n.name else "")
 
         time.sleep(5)
 

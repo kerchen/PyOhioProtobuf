@@ -7,8 +7,6 @@ import time
 
 #this_script_dir=os.path.dirname(os.path.abspath(__file__))
 #sys.path.append(os.path.join(this_script_dir, '..', '..'))
-
-
 #HOST, PORT = "192.168.254.47", 48003
 
 def parse_args():
@@ -60,6 +58,9 @@ def connect_to_controller(sock, host, port, dev_id):
     print("Sent {} bytes".format(bc))
 
 
+def handle_command(cmd_msg):
+    print "Command rec'd. Cmd id: {}".format(cmd_msg.cmd)
+
 def main():
     args = parse_args()
 
@@ -78,7 +79,12 @@ def main():
     while True:
         try:
             received = sock.recv(1024)
-            print "Received: {}".format(received)
+            msg = sensor_net_pb2.Msg()
+            msg.ParseFromString(received[1:])
+            if msg.type == sensor_net_pb2.Msg.COMMAND:
+                handle_command(msg.command_msg)
+
+            #print "Received: {}".format(received)
         except:
             time.sleep(1)
 

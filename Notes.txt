@@ -1,0 +1,49 @@
+===============================================================================
+  One-time Setup
+===============================================================================
+Get Google protobuf
+github: https://github.com/google/protobuf
+Version used for demo: https://github.com/google/protobuf/releases/tag/v3.3.0
+Install prebuilt protoc somewhere convenient.
+Install six: pip install six
+Install Python PB per https://github.com/google/protobuf/tree/master/python
+ - Make sure protoc binary is in path
+ - From protobuf-3.3.0\python, run:
+     python setup.py build
+     python setup.py test
+ - Add built lib to path: set PYTHONPATH=....\protobuf-3.3.0\python\build\lib
+
+
+
+To use nanopb as an Arduino library, git clone nanopb into Arduino library directory.
+nanopb github: https://github.com/nanopb/nanopb
+Arduino lib dir for Windows: MyDocuments\Arduino\libraries
+
+See https://www.arduino.cc/en/Guide/Libraries for more info.
+
+Run protoc on .proto files in generator\proto:
+    protoc --python_out=. nanopb.proto
+    protoc --python_out=. plugin.proto
+
+===============================================================================
+  Environment Setup
+===============================================================================
+set PYTHONPATH=c:\projects\protobuf-python-3.3.0\protobuf-3.3.0\python\build\lib
+set PATH=%PATH%;c:\Python27;c:\projects\protoc-3.3.0-win32\bin
+
+===============================================================================
+  Recurring usage
+===============================================================================
+Use protoc with nanopb genertor to generate C:
+    protoc --plugin=protoc-gen-nanopb=C:\Users\pk\Documents\Arduino\libraries\nanopb\generator\protoc-gen-nanopb.bat simple.proto --nanopb_out=.
+Output: simple.pb.c & .h
+
+
+Use protoc to generate Python classes:
+    protoc --python_out=. sensor_net.proto
+Output: sensor_net_pb2.py
+
+Warning! Relative path weirdness! Need to specify path in -I option *and* in .proto
+file name argument:
+    protoc --python_out=. -I ..\..  ..\..\sensor_net.proto
+
