@@ -2,138 +2,257 @@
 #include <Ethernet.h>
 #include <EthernetUdp.h>
 
+// The network settings variables can be read from the Arduino's
+// EEPROM to overwrite their initial values. To use the values stored in EEPROM,
+// uncomment the following line.
+#define INIT_FROM_EEPROM
+
+#ifdef INIT_FROM_EEPROM
+#include <EEPROM.h>
+#endif
+
 #include <pb.h>
 #include <pb_common.h>
 #include <pb_decode.h>
 #include <pb_encode.h>
-#include "simple.pb.h"
+#include "sensor_net.pb.h"
 
-// Enter a MAC address for your controller below.
-// Newer Ethernet shields have a MAC address printed on a sticker on the shield
-byte mac[] = { 0x90, 0xA2, 0xDA, 0x00, 0xD6, 0xE6 };
-IPAddress server(192,168,254,47);
-int port = 48003;
+// ****** Start of settings that can be initialized from EEPROM ******
 
-char packetBuffer[UDP_TX_PACKET_MAX_SIZE];  //buffer to hold incoming packet
+// MAC address of Ethernet shield (if MAC_IN_EEPROM is defined, these values
+// will be updated to the values read from EEPROM).
+byte g_mac[6] = { 0x90, 0xA2, 0xDA, 0x00, 0xD6, 0xE6 };
+
+// Controller IP and port
+IPAddress g_controller_IP(192,168,254,47);
+uint32_t g_controller_port = 48003;
 
 // Set the static IP address to use if the DHCP fails to assign
-IPAddress ip(192, 168, 254, 15);
+IPAddress g_static_IP(192, 168, 254, 15);
 
-EthernetUDP client;
+// ****** End of settings that can be initialized from EEPROM. ******
+
+
+// The packet buffer should be big enough to hold an encoded Msg + 1 byte for
+// the size of that encoded Msg.
+// To conserve RAM/ROM, we don't send a name string in our DeviceIdentification
+// messages, so we can make our packet buffer fairly small. Exactly how small
+// we can make it depends on the largest message we'll ever send or receive,
+// which, in turn, depends on how protobuf encodes messages. So, we'll *ahem*
+// empirically find a good max size.
+#define MAX_MESSAGE_SIZE 20
+
+char g_packet_buffer[MAX_MESSAGE_SIZE+1];
+
+// Ethernet shield interface 
+EthernetUDP g_network_connection;
+
+
+#ifdef INIT_FROM_EEPROM
+void init_from_EEPROM()
+{
+    int addr = 0;
+    byte buffer[4];
+
+    Serial.println("Reading network parameters from EEPROM.");
+
+    // Get MAC
+    Serial.print("MAC address: ");
+    for ( int i = 0; i < 6; ++i )
+    {
+        g_mac[i] = EEPROM.read(addr++);
+        Serial.print(g_mac[i], HEX);
+        if ( i < 5 )
+            Serial.print(" ");
+    }
+    Serial.println("");
+
+    // Get controller IP address
+    Serial.print("Controller IP: ");
+    for ( int i = 0; i < 4; ++i )
+    {
+        buffer[i] = EEPROM.read(addr++);
+        Serial.print(buffer[i], DEC);
+        if ( i < 3 )
+            Serial.print(".");
+    }
+    Serial.println("");
+    g_controller_IP = IPAddress( buffer[0], buffer[1], buffer[2], buffer[3] ); 
+
+    // Get controller port
+    Serial.print("Controller Port: ");
+    byte value;
+    g_controller_port = 0;
+    for ( int i = 0; i < 4; ++i )
+    {
+        value = EEPROM.read(addr++);
+        g_controller_port += uint32_t(value) << (i * 8);
+    }
+    Serial.println(g_controller_port, DEC);
+
+    // Check static IP address
+    Serial.print("Static IP: ");
+    for ( int i = 0; i < 4; ++i )
+    {
+        buffer[i] = EEPROM.read(addr++);
+        Serial.print(buffer[i], DEC);
+        if ( i < 3 )
+            Serial.print(".");
+    }
+    Serial.println("");
+    g_static_IP = IPAddress( buffer[0], buffer[1], buffer[2], buffer[3] ); 
+}
+
+#endif // INIT_FROM_EEPROM
+
+void init_device_id( DeviceIdentification& did )
+{
+    // Use bytes 2-5 of MAC address to create a unique ID. It should be unique
+    // if all sensors are using Ethernet shields from the same manufacturer.
+    did = DeviceIdentification_init_zero;
+    for ( int i = 2; i < 6; ++i )
+    {
+        did.id += uint32_t(g_mac[i]) << ( (5-i) * 8 );
+    }
+}
+
+
+bool send_message( Msg& msg )
+{
+    uint8_t message_length;
+    bool status = false;
+
+    pb_ostream_t stream =
+        pb_ostream_from_buffer(g_packet_buffer, sizeof(g_packet_buffer));
+
+    status = pb_encode(&stream, Msg_fields, &msg);
+    message_length = stream.bytes_written;
+
+    if ( message_length > sizeof(g_packet_buffer) )
+    {
+        Serial.print("Uh oh. The encoded message was longer than the buffer.");
+        status = false;
+    }
+
+    if ( ! status )
+    {
+        Serial.print("Message encoding failed.");
+        return status;
+    }
+
+    Serial.print("Sending message. Encoded length: ");
+    Serial.print(message_length);
+    Serial.println(" bytes");
+
+    if ( g_network_connection.beginPacket(g_controller_IP, g_controller_port))
+    {
+        g_network_connection.write((char*)(&message_length), 1);
+        g_network_connection.write(g_packet_buffer, message_length);
+        g_network_connection.endPacket();
+    }
+    else
+    {
+        Serial.println("Error sending UDP packet.");
+        status = false;
+    }
+
+    return status;
+}
+
+
+bool connect_to_controller()
+{
+    DeviceIdentification did;
+    init_device_id( did );
+
+    Connect con = Connect_init_zero;
+    con.id = did;
+
+    Msg msg = Msg_init_zero;
+    msg.type = Msg_MsgType_CONNECT;
+    msg.connect_msg = con;
+    msg.has_connect_msg = true;
+
+    return send_message( msg );
+}
 
 
 void setup()
 {
     Serial.begin(9600);
-    while (!Serial) {
-      ; // wait for serial port to connect. Needed for native USB port only
+    while ( !Serial )
+    {
+      ; // Wait for serial port to connect. Needed for native USB port only
     }
 
-    // start the Ethernet connection:
-    if (Ethernet.begin(mac) == 0) {
-      Serial.println("Failed to configure Ethernet using DHCP");
-      // try to congifure using IP address instead of DHCP:
-      Ethernet.begin(mac, ip);
+#ifdef INIT_FROM_EEPROM
+    init_from_EEPROM();
+#endif // INIT_FROM_EEPROM
+
+    // Start the Ethernet interface.
+    if (Ethernet.begin(g_mac) == 0)
+    {
+        Serial.println("Failed to configure Ethernet using DHCP");
+        Ethernet.begin(g_mac, g_static_IP);
     }
     Serial.print("IP address: ");
     Serial.println(Ethernet.localIP());
 
-    // give the Ethernet shield a second to initialize:
+    // Give the Ethernet shield a second to initialize.
     delay(1000);
-    Serial.println("connecting...");
   
-    // if you get a connection, report back via serial:
-    //if (client.connect(server, port)) {
-    //    Serial.println("connected");
-    //} else {
-      // if you didn't get a connection to the server:
-    //    Serial.println("connection failed");
-    //}
-    client.begin(port);
+    g_network_connection.begin(g_controller_port);
 
-    /* This is the buffer where we will store our message. */
-    uint8_t buffer[128];
-    size_t message_length;
-    bool status;
-    
-    /* Encode our message */
+    Serial.print("Packet buffer size: ");
+    Serial.println(sizeof(g_packet_buffer));
+
+    Serial.println("Attempting connection to the controller.");
+    while ( ! connect_to_controller() )
     {
-        /* Allocate space on the stack to store the message data.
-         *
-         * Nanopb generates simple struct definitions for all the messages.
-         * - check out the contents of simple.pb.h!
-         * It is a good idea to always initialize your structures
-         * so that you do not have garbage data from RAM in there.
-         */
-        SimpleMessage message = SimpleMessage_init_zero;
-        
-        /* Create a stream that will write to our buffer. */
-        pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
-        
-        /* Fill in the lucky number */
-        message.lucky_number = 13;
-        
-        /* Now we are ready to encode the message! */
-        status = pb_encode(&stream, SimpleMessage_fields, &message);
-        message_length = stream.bytes_written;
-        
-        /* Then just check for any errors.. */
-        if (!status)
-        {
-            Serial.println("Encoding failed"); //: %s", PB_GET_ERROR(&stream));
-        }
+        delay(3000);
+        Serial.println("Failed to send connection msg to the controller. Retrying.");
     }
-    
-    /* Now we could transmit the message over network, store it in a file or
-     * wrap it to a pigeon's leg.
-     */
-
-    /* But because we are lazy, we will just decode it immediately. */
-    
-    {
-        /* Allocate space for the decoded message. */
-        SimpleMessage message = SimpleMessage_init_zero;
-        
-        /* Create a stream that reads from the buffer. */
-        pb_istream_t stream = pb_istream_from_buffer(buffer, message_length);
-        
-        /* Now we are ready to decode the message. */
-        status = pb_decode(&stream, SimpleMessage_fields, &message);
-        
-        /* Check for errors... */
-        if (!status)
-        {
-            Serial.println("Decoding failed:");// %s", PB_GET_ERROR(&stream));
-        }
-        
-        /* Print the data contained in the message. */
-        Serial.print("Your lucky number was ");// %d!\n", message.lucky_number);
-    }
-
-
 }
 
-void loop() {
-    int pkt_size = client.parsePacket();
+
+void loop()
+{
+    int pkt_size = g_network_connection.parsePacket();
 
     if ( pkt_size )
     {
+        bool status;
+
         Serial.print("Incoming! ");
         Serial.print(pkt_size);
         Serial.println(" bytes");
-        client.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
-        Serial.println("Contents:");
-        Serial.println(packetBuffer);
+        g_network_connection.read(g_packet_buffer, sizeof(g_packet_buffer)-1);
+
+        Msg msg = Msg_init_zero;
+        pb_istream_t stream = pb_istream_from_buffer(&g_packet_buffer[1], g_packet_buffer[0]);
+        status = pb_decode(&stream, Msg_fields, &msg);
+
+        if ( status )
+        {
+            Serial.print("Decoded message type: ");
+            Serial.println(msg.type);
+        }
+        else
+        {
+            Serial.println("Decode failed. :(");
+        }
     }
 
     delay(5000);
-    if ( client.beginPacket(server, port ) )
+    /*
+    if ( g_network_connection.beginPacket(g_controller_IP, g_controller_port ) )
     {
-        client.write("hello periodic");
-        client.endPacket();
+        g_network_connection.write("hello periodic");
+        g_network_connection.endPacket();
     }
     else
     {
         Serial.println("Error sending UDP packet.");
     }
+    */
 }

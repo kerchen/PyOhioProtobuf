@@ -35,15 +35,14 @@ set PATH=%PATH%;c:\Python27;c:\projects\protoc-3.3.0-win32\bin
   Recurring usage
 ===============================================================================
 Use protoc with nanopb genertor to generate C:
-    protoc --plugin=protoc-gen-nanopb=C:\Users\pk\Documents\Arduino\libraries\nanopb\generator\protoc-gen-nanopb.bat simple.proto --nanopb_out=.
-Output: simple.pb.c & .h
+    protoc --plugin=protoc-gen-nanopb=C:\Users\pk\Documents\Arduino\libraries\nanopb\generator\protoc-gen-nanopb.bat -I ..\.. sensor_net.proto --nanopb_out=.
+Output: sensor_net.pb.c & .h
 
 
 Use protoc to generate Python classes:
-    protoc --python_out=. sensor_net.proto
+    protoc --python_out=. -I ..\..  ..\..\sensor_net.proto
 Output: sensor_net_pb2.py
 
 Warning! Relative path weirdness! Need to specify path in -I option *and* in .proto
 file name argument:
-    protoc --python_out=. -I ..\..  ..\..\sensor_net.proto
 

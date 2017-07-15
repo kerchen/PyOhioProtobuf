@@ -10,7 +10,7 @@ Node = namedtuple("Node", "address id name")
 attached_nodes = []
 
 def handle_connect(con_msg, client_address):
-    print "  Device ID: {}".format(con_msg.id.id)
+    print "  Device ID: {0:d} (0x{0:x})".format(con_msg.id.id)
     if con_msg.id.HasField('name'):
         print "  Device name: " + con_msg.id.name
     n = Node(client_address, con_msg.id.id, con_msg.id.name)
@@ -20,7 +20,8 @@ class UDPHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         data = self.request[0]
         socket = self.request[1]
-        print "Connection from {0}:{1}".format(self.client_address[0], self.client_address[1])
+        print "Connection from {0}:{1}".format(
+                self.client_address[0], self.client_address[1])
         print binascii.hexlify(data[1:])
         msg = sensor_net_pb2.Msg()
         msg.ParseFromString(data[1:])
@@ -61,7 +62,8 @@ if __name__ == "__main__":
             header[0] = len(payload)
 
             sock.sendto(header+payload, n.address)
-            print "Sent command to {0}:{1}".format(n.id, n.name if n.name else "")
+            print "Sent command to {0:d} (0x{0:x}){1}".format(
+                    n.id, " \""+n.name+"\"" if n.name else "")
 
         time.sleep(5)
 

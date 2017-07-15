@@ -20,11 +20,11 @@ def parse_args():
     parser.add_argument(
         "--dev-name",
         help="Device name.")
-    parser.add_argument(
-        "--set-flag",
-        action='store_true',
-        default=False,
-        help="Set a flag")
+    #parser.add_argument(
+        #"--set-flag",
+        #action='store_true',
+        #default=False,
+        #help="Set a flag")
     parser.add_argument(
         "--host",
         default="localhost",

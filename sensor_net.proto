@@ -1,11 +1,11 @@
-// An example protocol definition for communication between a master controller
-// and simple data collection devices.
+// A protocol definition for communication between a master controller
+// and data collection sensors.
 
 syntax = "proto2";
 
 
 message DeviceIdentification {
-    required int32  id = 1;
+    required uint32  id = 1;
     optional string name = 2;
 }
 
@@ -18,7 +18,7 @@ message Response {
 }
 
 message Command {
-    required int32 cmd = 1;
+    required uint32 cmd = 1;
 }
 
 message Msg {
