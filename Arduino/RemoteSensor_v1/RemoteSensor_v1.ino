@@ -217,6 +217,7 @@ void setup()
 
 void loop()
 {
+#ifndef ARDUINO_AVR_UNO
     int pkt_size = g_network_connection.parsePacket();
 
     if ( pkt_size )
@@ -244,6 +245,7 @@ void loop()
     }
 
     delay(5000);
+#endif
     /*
     if ( g_network_connection.beginPacket(g_controller_IP, g_controller_port ) )
     {
