@@ -34,8 +34,8 @@ set PATH=%PATH%;c:\Python27;c:\projects\protoc-3.3.0-win32\bin
 ===============================================================================
   Recurring usage
 ===============================================================================
-Use protoc with nanopb genertor to generate C:
-    protoc --plugin=protoc-gen-nanopb=C:\Users\pk\Documents\Arduino\libraries\nanopb\generator\protoc-gen-nanopb.bat -I ..\.. sensor_net.proto --nanopb_out=.
+Use protoc with nanopb generator to generate C code:
+    protoc --plugin=protoc-gen-nanopb=C:\Users\pk\Documents\Arduino\libraries\nanopb\generator\protoc-gen-nanopb.bat -I ..\.. ..\..\sensor_net.proto --nanopb_out=.
 Output: sensor_net.pb.c & .h
 
 

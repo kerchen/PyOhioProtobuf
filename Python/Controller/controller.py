@@ -10,10 +10,10 @@ Node = namedtuple("Node", "address id name")
 attached_nodes = []
 
 def handle_connect(con_msg, client_address):
-    print "  Device ID: {0:d} (0x{0:x})".format(con_msg.id.id)
-    if con_msg.id.HasField('name'):
-        print "  Device name: " + con_msg.id.name
-    n = Node(client_address, con_msg.id.id, con_msg.id.name)
+    print "  Device ID: {0:d} (0x{0:x})".format(con_msg.dev_id.id)
+    if con_msg.dev_id.HasField('name'):
+        print "  Device name: " + con_msg.dev_id.name
+    n = Node(client_address, con_msg.dev_id.id, con_msg.dev_id.name)
     attached_nodes.append(n)
 
 class UDPHandler(SocketServer.BaseRequestHandler):

@@ -4,32 +4,38 @@
 syntax = "proto2";
 
 
+// Contains information that identifies a particular sensor device.
 message DeviceIdentification {
     required uint32  id = 1;
     optional string name = 2;
 }
 
+// Sent by sensor devices to tell the controller about their existence.
 message Connect {
-    required DeviceIdentification id = 1;
+    required DeviceIdentification dev_id = 1;
 }
 
-message Response {
-    required DeviceIdentification id = 1;
+// Sent by sensor devices to tell the controller they are disonnecting.
+message Disconnect {
+    required DeviceIdentification dev_id = 1;
 }
 
+// Sent by the controller to give a command to a sensor device.
 message Command {
     required uint32 cmd = 1;
 }
 
+// Top-level generic message wrapper. The contents are determined by its
+// type and the optional field for that type.
 message Msg {
     enum MsgType {
         CONNECT     = 0;
-        RESPONSE    = 1;
+        DISCONNECT  = 1;
         COMMAND     = 2;
     }
 
     required MsgType    type = 1;
     optional Connect    connect_msg = 2;
-    optional Response   response_msg = 3;
+    optional Disconnect disconnect_msg = 3;
     optional Command    command_msg = 4;
 }

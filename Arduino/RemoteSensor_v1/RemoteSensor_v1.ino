@@ -2,9 +2,17 @@
 #include <Ethernet.h>
 #include <EthernetUdp.h>
 
-// The network settings variables can be read from the Arduino's
-// EEPROM to overwrite their initial values. To use the values stored in EEPROM,
-// uncomment the following line.
+// To make it easier to to use this sketch with multiple Arduinos, the network
+// settings variables can be read from the Arduino's EEPROM to overwrite their
+// initial values defined in this sketch. To use the values stored in EEPROM,
+// uncomment the following line (or otherwise #define INIT_FROM_EEPROM). See
+// the accompanying WriteEEPROM sketch, which can be used to write the proper
+// values in the expected location and order.
+// Using EEPROM in this way has some overhead in terms of RAM/ROM usage: 538
+// bytes of program space and 104 bytes of dynamic memory. Therefore, if you
+// don't need to use multiple Arduinos or if you really need those bytes, leave
+// this #define commented out and make sure the intializers of the network
+// settings variables below match your hardware and network.
 #define INIT_FROM_EEPROM
 
 #ifdef INIT_FROM_EEPROM
@@ -105,15 +113,16 @@ void init_from_EEPROM()
 
 #endif // INIT_FROM_EEPROM
 
-void init_device_id( DeviceIdentification& did )
+void init_device_id( DeviceIdentification& dev_id )
 {
     // Use bytes 2-5 of MAC address to create a unique ID. It should be unique
     // if all sensors are using Ethernet shields from the same manufacturer.
-    did = DeviceIdentification_init_zero;
+    dev_id = DeviceIdentification_init_zero;
     for ( int i = 2; i < 6; ++i )
     {
-        did.id += uint32_t(g_mac[i]) << ( (5-i) * 8 );
+        dev_id.id += uint32_t(g_mac[i]) << ( (5-i) * 8 );
     }
+    // The 'name' field is optional, so we'll leave it empty to save storage.
 }
 
 
@@ -162,11 +171,11 @@ bool send_message( Msg& msg )
 
 bool connect_to_controller()
 {
-    DeviceIdentification did;
-    init_device_id( did );
+    DeviceIdentification dev_id;
+    init_device_id( dev_id );
 
     Connect con = Connect_init_zero;
-    con.id = did;
+    con.dev_id = dev_id;
 
     Msg msg = Msg_init_zero;
     msg.type = Msg_MsgType_CONNECT;

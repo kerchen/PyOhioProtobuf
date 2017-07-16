@@ -5,10 +5,6 @@ import socket
 import sys
 import time
 
-#this_script_dir=os.path.dirname(os.path.abspath(__file__))
-#sys.path.append(os.path.join(this_script_dir, '..', '..'))
-#HOST, PORT = "192.168.254.47", 48003
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Protobuf Test Client')
 
@@ -20,11 +16,6 @@ def parse_args():
     parser.add_argument(
         "--dev-name",
         help="Device name.")
-    #parser.add_argument(
-        #"--set-flag",
-        #action='store_true',
-        #default=False,
-        #help="Set a flag")
     parser.add_argument(
         "--host",
         default="localhost",
@@ -41,7 +32,7 @@ def parse_args():
 
 def connect_to_controller(sock, host, port, dev_id):
     con_msg = sensor_net_pb2.Connect()
-    con_msg.id.CopyFrom(dev_id)
+    con_msg.dev_id.CopyFrom(dev_id)
 
     msg = sensor_net_pb2.Msg()
     msg.type = sensor_net_pb2.Msg.CONNECT
@@ -70,6 +61,7 @@ def main():
     if args.dev_name:
         my_id.name = args.dev_name
 
+    # Set up UDP socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setblocking(0)
 
