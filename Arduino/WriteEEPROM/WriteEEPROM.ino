@@ -1,10 +1,11 @@
 #include <EEPROM.h>
 
-byte g_mac[6] = { 0x90, 0xA2, 0xDA, 0x00, 0xD6, 0xE6 };
-byte g_controller_IP[4] = { 192, 168, 254, 47 };
+// The following values will be written to EEPROM.
+byte g_mac[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+byte g_controller_IP[4] = { 192, 168, 0, 1 };
 uint32_t g_controller_port = 48003;
-byte g_static_IP[4] = { 192, 168, 254, 15 };
-
+byte g_static_IP[4] = { 192, 168, 0, 100 };
+// End of values to be written to EEPROM.
 
 void setup()
 {
