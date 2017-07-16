@@ -35,7 +35,7 @@ def connect_to_controller(sock, host, port, dev_id):
     con_msg.dev_id.CopyFrom(dev_id)
 
     msg = sensor_net_pb2.Msg()
-    msg.type = sensor_net_pb2.Msg.CONNECT
+    msg.msg_type = sensor_net_pb2.Msg.CONNECT
     msg.connect_msg.CopyFrom(con_msg)
 
     payload = msg.SerializeToString()
@@ -43,14 +43,14 @@ def connect_to_controller(sock, host, port, dev_id):
     header = bytearray(1)
     header[0] = payload_len
     assert(payload_len == header[0]) # Make sure one byte is enough for len!
-    #print binascii.hexlify(msg_bytes)
+    #print(binascii.hexlify(msg_bytes))
     print("Sending payload of {} bytes".format(int(header[0])))
     bc = sock.sendto(header+payload, (host, port))
     print("Sent {} bytes".format(bc))
 
 
 def handle_command(cmd_msg):
-    print "Command rec'd. Cmd id: {}".format(cmd_msg.cmd)
+    print("Command rec'd. Cmd id: {}".format(cmd_msg.cmd_type))
 
 def main():
     args = parse_args()
@@ -73,10 +73,10 @@ def main():
             received = sock.recv(1024)
             msg = sensor_net_pb2.Msg()
             msg.ParseFromString(received[1:])
-            if msg.type == sensor_net_pb2.Msg.COMMAND:
+            if msg.msg_type == sensor_net_pb2.Msg.COMMAND:
                 handle_command(msg.command_msg)
-
-            #print "Received: {}".format(received)
+            else:
+                print("Unexpected message type rec'd")
         except:
             time.sleep(1)
 

@@ -25,8 +25,8 @@ class UDPHandler(SocketServer.BaseRequestHandler):
         print binascii.hexlify(data[1:])
         msg = sensor_net_pb2.Msg()
         msg.ParseFromString(data[1:])
-        print "  Msg type: {}".format(msg.type)
-        if msg.type == sensor_net_pb2.Msg.CONNECT:
+        print "  Msg type: {}".format(msg.msg_type)
+        if msg.msg_type == sensor_net_pb2.Msg.CONNECT:
             handle_connect(msg.connect_msg, self.client_address)
 
 
@@ -45,15 +45,16 @@ if __name__ == "__main__":
     print "Server loop running in thread:", server_thread.name
 
     while True:
+        # Tell all attached nodes to report their current data.
         if len(attached_nodes):
             print("{} node(s) attached".format(len(attached_nodes)))
         for n in attached_nodes:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             msg = sensor_net_pb2.Msg()
-            msg.type = sensor_net_pb2.Msg.COMMAND
+            msg.msg_type = sensor_net_pb2.Msg.COMMAND
 
             cmd_msg = sensor_net_pb2.Command()
-            cmd_msg.cmd = 33
+            cmd_msg.cmd_type = sensor_net_pb2.Command.REPORT_DATA
 
             msg.command_msg.CopyFrom(cmd_msg)
             payload = msg.SerializeToString()

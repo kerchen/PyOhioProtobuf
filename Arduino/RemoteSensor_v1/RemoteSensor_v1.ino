@@ -171,16 +171,11 @@ bool send_message( Msg& msg )
 
 bool connect_to_controller()
 {
-    DeviceIdentification dev_id;
-    init_device_id( dev_id );
-
-    Connect con = Connect_init_zero;
-    con.dev_id = dev_id;
-
     Msg msg = Msg_init_zero;
-    msg.type = Msg_MsgType_CONNECT;
-    msg.connect_msg = con;
+    msg.msg_type = Msg_MsgType_CONNECT;
     msg.has_connect_msg = true;
+    msg.connect_msg = Connect_init_zero;
+    init_device_id( msg.connect_msg.dev_id );
 
     return send_message( msg );
 }
@@ -245,7 +240,7 @@ void loop()
         if ( status )
         {
             Serial.print("Decoded message type: ");
-            Serial.println(msg.type);
+            Serial.println(msg.msg_type);
         }
         else
         {

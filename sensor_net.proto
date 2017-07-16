@@ -6,8 +6,8 @@ syntax = "proto2";
 
 // Contains information that identifies a particular sensor device.
 message DeviceIdentification {
-    required uint32  id = 1;
-    optional string name = 2;
+    required uint32     id      = 1;
+    optional string     name    = 2;
 }
 
 // Sent by sensor devices to tell the controller about their existence.
@@ -15,27 +15,36 @@ message Connect {
     required DeviceIdentification dev_id = 1;
 }
 
-// Sent by sensor devices to tell the controller they are disonnecting.
-message Disconnect {
-    required DeviceIdentification dev_id = 1;
-}
-
 // Sent by the controller to give a command to a sensor device.
 message Command {
-    required uint32 cmd = 1;
+    enum CommandType {
+        REPORT_DATA             = 1; // cmd_param1 specifies period, in seconds
+    }
+
+    required CommandType cmd_type   = 1;
+    optional uint32 cmd_param1      = 2 [ default = 0 ];
 }
 
-// Top-level generic message wrapper. The contents are determined by its
-// type and the optional field for that type.
+// Sent by sensor devices to report data.
+message Report {
+    required DeviceIdentification dev_id    = 1;
+    optional float temperature              = 2;
+    optional float humidity                 = 3;
+}
+
+// Top-level generic message wrapper used by both sensors and controllers.
 message Msg {
     enum MsgType {
         CONNECT     = 0;
-        DISCONNECT  = 1;
-        COMMAND     = 2;
+        COMMAND     = 1;
+        REPORT      = 2;
     }
 
-    required MsgType    type = 1;
+    // The 'type' field indicates which of the optional fields that follow it
+    // should also be in this message. Without this discriminator, the receiver
+    // would need to query for every optional field.
+    required MsgType    msg_type    = 1;
     optional Connect    connect_msg = 2;
-    optional Disconnect disconnect_msg = 3;
-    optional Command    command_msg = 4;
+    optional Command    command_msg = 3;
+    optional Report     report_msg  = 4;
 }
