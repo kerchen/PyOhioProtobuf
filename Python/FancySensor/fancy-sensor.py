@@ -1,9 +1,15 @@
 import argparse
 import binascii
+import random
 import sensor_net_pb2
 import socket
 import sys
 import time
+from collections import namedtuple
+
+Reading = namedtuple("Reading", "temperature humidity")
+
+last_reading = Reading(80, 50)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Protobuf Test Client')
@@ -30,15 +36,8 @@ def parse_args():
 
     return args
 
-def connect_to_controller(sock, host, port, dev_id):
-    con_msg = sensor_net_pb2.Connect()
-    con_msg.dev_id.CopyFrom(dev_id)
-
-    msg = sensor_net_pb2.Msg()
-    msg.msg_type = sensor_net_pb2.Msg.CONNECT
-    msg.connect_msg.CopyFrom(con_msg)
-
-    payload = msg.SerializeToString()
+def send_packet(sock, host, port, payload):
+    ''' Sends header and payload to controller. '''
     payload_len = len(payload)
     header = bytearray(1)
     header[0] = payload_len
@@ -47,10 +46,49 @@ def connect_to_controller(sock, host, port, dev_id):
     print("Sending payload of {} bytes".format(int(header[0])))
     bc = sock.sendto(header+payload, (host, port))
     print("Sent {} bytes".format(bc))
+    return bc
 
+def send_connect(sock, host, port, dev_id):
+    ''' Sends a Connect message to the controller '''
+    con_msg = sensor_net_pb2.Connect()
+    con_msg.dev_id.CopyFrom(dev_id)
 
-def handle_command(cmd_msg):
+    msg = sensor_net_pb2.Msg()
+    msg.msg_type = sensor_net_pb2.Msg.CONNECT
+    msg.connect_msg.CopyFrom(con_msg)
+
+    payload = msg.SerializeToString()
+    return send_packet(sock, host, port, payload)
+
+def send_report(sock, host, port, dev_id, reading):
+    ''' Sends a Report message to the controller '''
+    rpt_msg = sensor_net_pb2.Report()
+    rpt_msg.dev_id.CopyFrom(dev_id)
+    rpt_msg.temperature = reading.temperature
+    rpt_msg.humidity = reading.humidity
+
+    msg = sensor_net_pb2.Msg()
+    msg.msg_type = sensor_net_pb2.Msg.REPORT
+    msg.report_msg.CopyFrom(rpt_msg)
+
+    payload = msg.SerializeToString()
+    return send_packet(sock, host, port, payload)
+
+def handle_command(sock, host, port, cmd_msg, dev_id):
+    ''' Process Command messages coming from the controller. '''
     print("Command rec'd. Cmd id: {}".format(cmd_msg.cmd_type))
+    if cmd_msg.cmd_type == sensor_net_pb2.Command.REPORT_DATA:
+        send_report(sock, host, port, dev_id, last_reading)
+
+def take_reading():
+    global last_reading
+
+    ''' Simulate reading data from somewhere. '''
+    t = last_reading.temperature + random.uniform(-0.25, 0.25)
+    h = last_reading.humidity + random.uniform(-1, 1)
+    d = Reading(t, h)
+    last_reading = d
+    return d
 
 def main():
     args = parse_args()
@@ -66,19 +104,33 @@ def main():
     sock.setblocking(0)
 
     # Tell the controller we exist
-    connect_to_controller(sock, args.host, args.port, my_id)
+    send_connect(sock, args.host, args.port, my_id)
+
+    time_to_next_reading = 5
 
     while True:
+        # See if we've gotten anything from the controller.
         try:
-            received = sock.recv(1024)
+            sock.recv_into(header, 1)
+            print("{} bytes incoming.".format(int(header[0])))
+            #payload = sock.recv(int(header[0]))
+            #sock.recv_into(payload, 1024)
+            sock.recv_into(payload, int(header[0]))
             msg = sensor_net_pb2.Msg()
-            msg.ParseFromString(received[1:])
+            msg.ParseFromString(payload)
             if msg.msg_type == sensor_net_pb2.Msg.COMMAND:
-                handle_command(msg.command_msg)
+                handle_command(sock, args.host, args.port, msg.command_msg, my_id)
             else:
                 print("Unexpected message type rec'd")
         except:
+            print("Nope")
             time.sleep(1)
+
+        # Take another sensor reading?
+        time_to_next_reading -= 1
+        if time_to_next_reading <= 0:
+            take_reading()
+            time_to_next_reading = 5
 
     sys.exit(0)
 

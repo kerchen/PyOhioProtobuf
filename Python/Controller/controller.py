@@ -10,24 +10,33 @@ Node = namedtuple("Node", "address id name")
 attached_nodes = []
 
 def handle_connect(con_msg, client_address):
-    print "  Device ID: {0:d} (0x{0:x})".format(con_msg.dev_id.id)
+    print("  Device ID: {0:d} (0x{0:x})".format(con_msg.dev_id.id))
     if con_msg.dev_id.HasField('name'):
-        print "  Device name: " + con_msg.dev_id.name
+        print("  Device name: " + con_msg.dev_id.name)
     n = Node(client_address, con_msg.dev_id.id, con_msg.dev_id.name)
     attached_nodes.append(n)
+
+def handle_report(rpt_msg):
+    print("Got a report message from {0:d} (0x{0:x})".format(rpt_msg.dev_id.id))
+    if rpt_msg.HasField('temperature'):
+        print("  temperature: ", rpt_msg.temperature)
+    if rpt_msg.HasField('humidity'):
+        print("  humidity: ", rpt_msg.humidity)
 
 class UDPHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         data = self.request[0]
         socket = self.request[1]
-        print "Connection from {0}:{1}".format(
-                self.client_address[0], self.client_address[1])
-        print binascii.hexlify(data[1:])
+        print("Connection from {0}:{1}".format(
+                self.client_address[0], self.client_address[1]))
+        print(binascii.hexlify(data[1:]))
         msg = sensor_net_pb2.Msg()
         msg.ParseFromString(data[1:])
-        print "  Msg type: {}".format(msg.msg_type)
+        print("  Msg type: {}".format(msg.msg_type))
         if msg.msg_type == sensor_net_pb2.Msg.CONNECT:
             handle_connect(msg.connect_msg, self.client_address)
+        elif msg.msg_type == sensor_net_pb2.Msg.REPORT:
+            handle_report(msg.connect_msg, self.client_address)
 
 
 class ThreadedServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
@@ -42,7 +51,7 @@ if __name__ == "__main__":
     server_thread = threading.Thread(target=server.serve_forever)
     server_thread.daemon = True
     server_thread.start()
-    print "Server loop running in thread:", server_thread.name
+    print("Server loop running in thread:", server_thread.name)
 
     while True:
         # Tell all attached nodes to report their current data.
@@ -63,8 +72,8 @@ if __name__ == "__main__":
             header[0] = len(payload)
 
             sock.sendto(header+payload, n.address)
-            print "Sent command to {0:d} (0x{0:x}){1}".format(
-                    n.id, " \""+n.name+"\"" if n.name else "")
+            print("Sent command to {0:d} (0x{0:x}){1}".format(
+                    n.id, " \""+n.name+"\"" if n.name else ""))
 
         time.sleep(5)
 
