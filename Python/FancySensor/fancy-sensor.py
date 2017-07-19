@@ -76,14 +76,14 @@ def send_report(sock, host, port, dev_id, reading):
 
 def handle_command(sock, host, port, cmd_msg, dev_id):
     ''' Process Command messages coming from the controller. '''
+    global last_reading
     print("Command rec'd. Cmd id: {}".format(cmd_msg.cmd_type))
     if cmd_msg.cmd_type == sensor_net_pb2.Command.REPORT_DATA:
         send_report(sock, host, port, dev_id, last_reading)
 
 def take_reading():
-    global last_reading
-
     ''' Simulate reading data from somewhere. '''
+    global last_reading
     t = last_reading.temperature + random.uniform(-0.25, 0.25)
     h = last_reading.humidity + random.uniform(-1, 1)
     d = Reading(t, h)
@@ -111,19 +111,17 @@ def main():
     while True:
         # See if we've gotten anything from the controller.
         try:
-            sock.recv_into(header, 1)
-            print("{} bytes incoming.".format(int(header[0])))
-            #payload = sock.recv(int(header[0]))
-            #sock.recv_into(payload, 1024)
-            sock.recv_into(payload, int(header[0]))
+            packet = sock.recv(1024)
             msg = sensor_net_pb2.Msg()
-            msg.ParseFromString(payload)
+            msg.ParseFromString(packet[1:])
             if msg.msg_type == sensor_net_pb2.Msg.COMMAND:
                 handle_command(sock, args.host, args.port, msg.command_msg, my_id)
             else:
                 print("Unexpected message type rec'd")
-        except:
-            print("Nope")
+        except Exception as ex:
+            #template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            #message = template.format(type(ex).__name__, ex.args)
+            #print message
             time.sleep(1)
 
         # Take another sensor reading?

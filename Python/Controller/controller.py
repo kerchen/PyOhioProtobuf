@@ -19,9 +19,9 @@ def handle_connect(con_msg, client_address):
 def handle_report(rpt_msg):
     print("Got a report message from {0:d} (0x{0:x})".format(rpt_msg.dev_id.id))
     if rpt_msg.HasField('temperature'):
-        print("  temperature: ", rpt_msg.temperature)
+        print("  temperature: " + str(rpt_msg.temperature))
     if rpt_msg.HasField('humidity'):
-        print("  humidity: ", rpt_msg.humidity)
+        print("  humidity: " + str(rpt_msg.humidity))
 
 class UDPHandler(SocketServer.BaseRequestHandler):
     def handle(self):
@@ -36,7 +36,7 @@ class UDPHandler(SocketServer.BaseRequestHandler):
         if msg.msg_type == sensor_net_pb2.Msg.CONNECT:
             handle_connect(msg.connect_msg, self.client_address)
         elif msg.msg_type == sensor_net_pb2.Msg.REPORT:
-            handle_report(msg.connect_msg, self.client_address)
+            handle_report(msg.report_msg)
 
 
 class ThreadedServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
@@ -44,14 +44,15 @@ class ThreadedServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
 
 
 if __name__ == "__main__":
-    HOST, PORT = "192.168.254.47", 48003
+    #HOST, PORT = "192.168.254.47", 48003
+    HOST, PORT = "localhost", 48003
     server = ThreadedServer((HOST, PORT), UDPHandler)
     ip, port = server.server_address
 
     server_thread = threading.Thread(target=server.serve_forever)
     server_thread.daemon = True
     server_thread.start()
-    print("Server loop running in thread:", server_thread.name)
+    print("Server loop running in thread:" + server_thread.name)
 
     while True:
         # Tell all attached nodes to report their current data.
@@ -71,9 +72,10 @@ if __name__ == "__main__":
             header = bytearray(1)
             header[0] = len(payload)
 
-            sock.sendto(header+payload, n.address)
-            print("Sent command to {0:d} (0x{0:x}){1}".format(
-                    n.id, " \""+n.name+"\"" if n.name else ""))
+            sock.sendto(header+payload, (n.address[0], n.address[1]))
+            print("Sent command to {0:d} (0x{0:x}){1} {2}".format(
+                    n.id, " \""+n.name+"\"" if n.name else "",
+                    n.address))
 
         time.sleep(5)
 
