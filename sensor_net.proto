@@ -18,18 +18,24 @@ message Connect {
 // Sent by the controller to give a command to a sensor device.
 message Command {
     enum CommandType {
-        REPORT_DATA             = 1; // cmd_param1 specifies period, in seconds
+        REPORT_DATA             = 1; // Report latest data reading.
     }
 
     required CommandType cmd_type   = 1;
-    optional uint32 cmd_param1      = 2 [ default = 0 ];
 }
 
 // Sent by sensor devices to report data.
 message Report {
     required DeviceIdentification dev_id    = 1;
-    optional float temperature              = 2;
-    optional float humidity                 = 3;
+
+    // Note: Some values are scaled so that we can use the more-efficient
+    // *int32 types instead of float/double.
+    message SensorData {
+        optional sint32 temperature             = 1; // Degrees Celsius * 10
+        optional uint32 humidity                = 2; // Relative humidity * 10 
+    }
+
+    optional SensorData data                = 2;
 }
 
 // Top-level generic message wrapper used by both sensors and controllers.

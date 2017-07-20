@@ -1,3 +1,4 @@
 *.pyc
 sensor_net_pb2.*
+sensor_net_v2_pb2.*
 sensor_net.pb.*

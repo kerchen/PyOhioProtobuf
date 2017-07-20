@@ -56,6 +56,9 @@ char g_packet_buffer[MAX_MESSAGE_SIZE+1];
 EthernetUDP g_network_connection;
 
 
+float last_temp_reading = 27.0;
+float last_hum_reading = 55.0;
+
 #ifdef INIT_FROM_EEPROM
 void init_from_EEPROM()
 {
@@ -181,6 +184,30 @@ bool connect_to_controller()
 }
 
 
+bool send_report()
+{
+    Msg msg = Msg_init_zero;
+    msg.msg_type = Msg_MsgType_REPORT;
+    msg.has_report_msg = true;
+    msg.report_msg = Report_init_zero;
+    init_device_id( msg.report_msg.dev_id );
+
+    msg.report_msg.has_data = true;
+    msg.report_msg.data.has_temperature = true;
+    msg.report_msg.data.temperature = int32_t(last_temp_reading * 10.0);
+    msg.report_msg.data.has_humidity = true;
+    msg.report_msg.data.humidity = int32_t(last_hum_reading * 10.0);
+
+    return send_message( msg );
+}
+
+void take_reading()
+{
+    // Simulate reading from hardware.
+    last_temp_reading = last_temp_reading + float(random(50)-25)/100.0;
+    last_hum_reading = last_hum_reading + float(random(200)-100)/100.0;
+}
+
 void setup()
 {
     Serial.begin(9600);
@@ -188,6 +215,8 @@ void setup()
     {
       ; // Wait for serial port to connect. Needed for native USB port only
     }
+
+    randomSeed(analogRead(0));
 
 #ifdef INIT_FROM_EEPROM
     init_from_EEPROM();
@@ -221,8 +250,9 @@ void setup()
 
 void loop()
 {
-#ifndef ARDUINO_AVR_UNO
     int pkt_size = g_network_connection.parsePacket();
+
+    take_reading();
 
     if ( pkt_size )
     {
@@ -241,6 +271,17 @@ void loop()
         {
             Serial.print("Decoded message type: ");
             Serial.println(msg.msg_type);
+            if ( msg.msg_type == Msg_MsgType_COMMAND && msg.has_command_msg )
+            {
+                if ( msg.command_msg.cmd_type == Command_CommandType_REPORT_DATA )
+                    send_report();
+                else
+                    Serial.println("Unexpected command type.");
+            }
+            else
+            {
+                Serial.println("Unexpected message.");
+            }
         }
         else
         {
@@ -248,17 +289,5 @@ void loop()
         }
     }
 
-    delay(5000);
-#endif
-    /*
-    if ( g_network_connection.beginPacket(g_controller_IP, g_controller_port ) )
-    {
-        g_network_connection.write("hello periodic");
-        g_network_connection.endPacket();
-    }
-    else
-    {
-        Serial.println("Error sending UDP packet.");
-    }
-    */
+    delay(1000);
 }

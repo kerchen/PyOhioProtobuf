@@ -13,7 +13,7 @@ syntax = "proto2";
 message DeviceIdentification {
     required uint32     id              = 1;
     optional string     name            = 2;
-    optional bool       keeps_history   = 3; // V2
+    optional bool       keeps_history   = 3 [ default=false ]; // V2
 }
 
 // Sent by sensor devices to tell the controller about their existence.
@@ -25,8 +25,8 @@ message Connect {
 message Command {
     enum CommandType {
         REPORT_DATA             = 1; // Report latest data reading.
-        REPORT_ALL_DATA         = 2; // V2; Report all data readings (for history-keeping devices)
-        CLEAR_DATA              = 3; // V2; Clear all data readings (for history-keeping devices)
+        REPORT_DATA_HISTORY     = 2; // V2; Report all data readings (for history-keeping devices)
+        CLEAR_DATA_HISTORY      = 3; // V2; Clear all data readings (for history-keeping devices)
     }
 
     required CommandType cmd_type   = 1;
@@ -35,11 +35,18 @@ message Command {
 // Sent by sensor devices to report data.
 message Report {
     required DeviceIdentification dev_id    = 1;
-    optional float temperature              = 2;
-    optional float humidity                 = 3;
-    optional uint32 collection_time         = 4; // V2
-    optional float rainfall                 = 5; // V2
-    optional float barometric_pressure      = 6; // V2
+
+    // Note: Some values are scaled so that we can use the more-efficient
+    // *int32 types instead of float/double.
+    message SensorData {
+        optional sint32 temperature             = 1; // Degrees Celsius * 10
+        optional uint32 humidity                = 2; // Relative humidity * 10 
+        optional uint32 rainfall                = 3; // In mm; V2
+        optional uint32 pressure                = 4; // In mm Hg; V2
+    }
+
+    optional SensorData data                = 2;
+    repeated SensorData data_history        = 3; // V2
 }
 
 // Top-level generic message wrapper used by both sensors and controllers.
@@ -56,5 +63,5 @@ message Msg {
     required MsgType    msg_type    = 1;
     optional Connect    connect_msg = 2;
     optional Command    command_msg = 3;
-    optional Report     report_msg  = 4 [ repeated ]; // Repeated in V2
+    optional Report     report_msg  = 4;
 }

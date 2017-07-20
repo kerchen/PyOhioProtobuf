@@ -9,7 +9,7 @@ from collections import namedtuple
 
 Reading = namedtuple("Reading", "temperature humidity")
 
-last_reading = Reading(80, 50)
+last_reading = Reading(27, 50)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Protobuf Test Client')
@@ -43,7 +43,6 @@ def send_packet(sock, host, port, payload):
     header[0] = payload_len
     assert(payload_len == header[0]) # Make sure one byte is enough for len!
     #print(binascii.hexlify(msg_bytes))
-    print("Sending payload of {} bytes".format(int(header[0])))
     bc = sock.sendto(header+payload, (host, port))
     print("Sent {} bytes".format(bc))
     return bc
@@ -64,8 +63,8 @@ def send_report(sock, host, port, dev_id, reading):
     ''' Sends a Report message to the controller '''
     rpt_msg = sensor_net_pb2.Report()
     rpt_msg.dev_id.CopyFrom(dev_id)
-    rpt_msg.temperature = reading.temperature
-    rpt_msg.humidity = reading.humidity
+    rpt_msg.data.temperature = int(reading.temperature * 10)
+    rpt_msg.data.humidity = int(reading.humidity * 10)
 
     msg = sensor_net_pb2.Msg()
     msg.msg_type = sensor_net_pb2.Msg.REPORT
@@ -77,9 +76,11 @@ def send_report(sock, host, port, dev_id, reading):
 def handle_command(sock, host, port, cmd_msg, dev_id):
     ''' Process Command messages coming from the controller. '''
     global last_reading
-    print("Command rec'd. Cmd id: {}".format(cmd_msg.cmd_type))
     if cmd_msg.cmd_type == sensor_net_pb2.Command.REPORT_DATA:
+        print("Sending latest sensor reading.")
         send_report(sock, host, port, dev_id, last_reading)
+    else:
+        print("Unknown command.")
 
 def take_reading():
     ''' Simulate reading data from somewhere. '''
