@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+
+message SensorData {
+    float temperature   = 1;
+    uint32 humidity     = 2; // Relative humidity
+
+    enum Units {
+        IMPERIAL    = 0;
+        REBEL       = 1;
+    }
+    Units units         = 3;
+}
+
