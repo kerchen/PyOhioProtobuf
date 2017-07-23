@@ -1,0 +1,58 @@
+// A protocol definition for communication between a master controller
+// and data collection sensors.
+// This is an extension of the original protocol, intended to show how it can
+// be updated without breaking devices that continue using the original.
+
+// Fields added in version 2 are marked with the comment 'V2'. This is strictly
+// for the humans; protobuf doesn't need such information.
+syntax = "proto3";
+
+
+// Contains information that identifies a particular sensor device.
+message DeviceIdentification {
+    uint32     id              = 1;
+    string     name            = 2;
+    bool       keeps_history   = 3; // V2
+}
+
+// Sent by sensor devices to tell the controller about their existence.
+message Connect {
+    DeviceIdentification dev_id = 1;
+}
+
+// Sent by the controller to give a command to a sensor device.
+message Command {
+    enum CommandType {
+        REPORT_DATA             = 0; // Report latest data reading.
+        REPORT_DATA_HISTORY     = 1; // V2; Report all data readings (for history-keeping devices)
+        CLEAR_DATA_HISTORY      = 2; // V2; Clear all data readings (for history-keeping devices)
+    }
+
+    CommandType cmd_type   = 1;
+}
+
+// Sent by sensor devices to report data.
+message Report {
+    DeviceIdentification dev_id    = 1;
+
+    // Note: Some values are scaled so that we can use the more-efficient
+    // *int32 types instead of float/double.
+    message SensorData {
+        sint32 temperature             = 1; // Degrees Celsius * 10
+        uint32 humidity                = 2; // Relative humidity * 10 
+        uint32 rainfall                = 3; // In mm; V2
+        uint32 pressure                = 4; // In mm Hg; V2
+    }
+
+    SensorData data                = 2;
+    repeated SensorData data_history = 3; // V2
+}
+
+// Top-level generic message wrapper used by both sensors and controllers.
+message Msg {
+    oneof msg_type {
+        Connect    connect_msg = 1;
+        Command    command_msg = 2;
+        Report     report_msg  = 3;
+    }
+}

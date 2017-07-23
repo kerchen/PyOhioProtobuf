@@ -59,7 +59,8 @@ message Msg {
 
     // The 'type' field indicates which of the optional fields that follow it
     // should also be in this message. Without this discriminator, the receiver
-    // would need to query for every optional field.
+    // would need to query for every optional field. In proto3, this functionality
+    // is achieved via the 'oneof' keyword.
     required MsgType    msg_type    = 1;
     optional Connect    connect_msg = 2;
     optional Command    command_msg = 3;

@@ -1,0 +1,48 @@
+// A protocol definition for communication between a master controller
+// and data collection sensors.
+
+syntax = "proto3";
+
+
+// Contains information that identifies a particular sensor device.
+message DeviceIdentification {
+    uint32     id      = 1;
+    string     name    = 2;
+}
+
+// Sent by sensor devices to tell the controller about their existence.
+message Connect {
+    DeviceIdentification dev_id = 1;
+}
+
+// Sent by the controller to give a command to a sensor device.
+message Command {
+    enum CommandType {
+        REPORT_DATA             = 0; // Report latest data reading.
+    }
+
+    CommandType cmd_type   = 1;
+}
+
+// Sent by sensor devices to report data.
+message Report {
+    DeviceIdentification dev_id    = 1;
+
+    // Note: Some values are scaled so that we can use the more-efficient
+    // *int32 types instead of float/double.
+    message SensorData {
+        sint32 temperature             = 1; // Degrees Celsius * 10
+        uint32 humidity                = 2; // Relative humidity * 10 
+    }
+
+    SensorData data                = 2;
+}
+
+// Top-level generic message wrapper used by both sensors and controllers.
+message Msg {
+    oneof msg_type {
+        Connect    connect_msg = 1;
+        Command    command_msg = 2;
+        Report     report_msg  = 3;
+    }
+}
