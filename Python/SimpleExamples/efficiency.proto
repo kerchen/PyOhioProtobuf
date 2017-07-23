@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+import "simple.proto";
+
+
+
+message SensorDataHistory {
+    repeated SensorData history = 1;
+}
+
+
+message Sint32SensorData {
+    sint32 temperature  = 1; // << Using sint32 instead of float
+    uint32 humidity     = 2;
+
+    enum Units {
+        IMPERIAL    = 0;
+        REBEL       = 1;
+    }
+    Units units         = 3;
+}
+
+message Sint32SensorDataHistory {
+    repeated Sint32SensorData history = 1;
+}
+
+message Int32SensorData {
+    int32 temperature   = 1; // << Using int32 instead of float
+    uint32 humidity     = 2;
+
+    enum Units {
+        IMPERIAL    = 0;
+        REBEL       = 1;
+    }
+    Units units         = 3;
+}
+
+message Int32SensorDataHistory {
+    repeated Int32SensorData history = 1;
+}
+

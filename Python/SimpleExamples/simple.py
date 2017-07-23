@@ -1,6 +1,10 @@
 import binascii
 import simple_pb2  # protoc appends _pb2, even if proto3!
 
+''' 
+    An example that illustrates the use of a simple protocol with a single
+    message type.
+'''
 
 def serialize(t, h):
     msg = simple_pb2.SensorData()
