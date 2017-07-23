@@ -1,7 +1,7 @@
 import argparse
 import binascii
 import random
-import sensor_net_v2_pb2 as sensor_net_pb2
+import sensor_pb2_v2_pb2 as sensor_pb2_pb2
 import socket
 import sys
 import time
@@ -53,11 +53,11 @@ def send_packet(sock, host, port, payload):
 
 def send_connect(sock, host, port, dev_id):
     ''' Sends a Connect message to the controller '''
-    con_msg = sensor_net_pb2.Connect()
+    con_msg = sensor_pb2_pb2.Connect()
     con_msg.dev_id.CopyFrom(dev_id)
 
-    msg = sensor_net_pb2.Msg()
-    msg.msg_type = sensor_net_pb2.Msg.CONNECT
+    msg = sensor_pb2_pb2.Msg()
+    msg.msg_type = sensor_pb2_pb2.Msg.CONNECT
     msg.connect_msg.CopyFrom(con_msg)
 
     payload = msg.SerializeToString()
@@ -66,7 +66,7 @@ def send_connect(sock, host, port, dev_id):
 def send_report(sock, host, port, dev_id, reading, send_history):
     ''' Sends a Report message to the controller '''
     global reading_history
-    rpt_msg = sensor_net_pb2.Report()
+    rpt_msg = sensor_pb2_pb2.Report()
     rpt_msg.dev_id.CopyFrom(dev_id)
 
     if send_history == True:
@@ -82,8 +82,8 @@ def send_report(sock, host, port, dev_id, reading, send_history):
         rpt_msg.data.rainfall = int(r.rainfall)
         rpt_msg.data.pressure = int(r.pressure)
 
-    msg = sensor_net_pb2.Msg()
-    msg.msg_type = sensor_net_pb2.Msg.REPORT
+    msg = sensor_pb2_pb2.Msg()
+    msg.msg_type = sensor_pb2_pb2.Msg.REPORT
     msg.report_msg.CopyFrom(rpt_msg)
 
     payload = msg.SerializeToString()
@@ -92,13 +92,13 @@ def send_report(sock, host, port, dev_id, reading, send_history):
 def handle_command(sock, host, port, cmd_msg, dev_id):
     ''' Process Command messages coming from the controller. '''
     global reading_history
-    if cmd_msg.cmd_type == sensor_net_pb2.Command.REPORT_DATA:
+    if cmd_msg.cmd_type == sensor_pb2_pb2.Command.REPORT_DATA:
         print("Sending latest sensor reading.")
         send_report(sock, host, port, dev_id, reading_history[0], False)
-    elif cmd_msg.cmd_type == sensor_net_pb2.Command.REPORT_DATA_HISTORY:
+    elif cmd_msg.cmd_type == sensor_pb2_pb2.Command.REPORT_DATA_HISTORY:
         print("Sending sensor reading history ({} readings).".format(len(reading_history)))
         send_report(sock, host, port, dev_id, reading_history, True)
-    elif cmd_msg.cmd_type == sensor_net_pb2.Command.CLEAR_DATA_HISTORY:
+    elif cmd_msg.cmd_type == sensor_pb2_pb2.Command.CLEAR_DATA_HISTORY:
         print("Clearing reading history.")
         # Preserve the last reading, but reset rainfall.
         r = reading_history[0]
@@ -123,7 +123,7 @@ def main():
     args = parse_args()
 
     # Create our ID object
-    my_id = sensor_net_pb2.DeviceIdentification()
+    my_id = sensor_pb2_pb2.DeviceIdentification()
     my_id.id = args.dev_id
     if args.dev_name:
         my_id.name = args.dev_name
@@ -142,9 +142,9 @@ def main():
         # See if we've gotten anything from the controller.
         try:
             packet = sock.recv(1024)
-            msg = sensor_net_pb2.Msg()
+            msg = sensor_pb2_pb2.Msg()
             msg.ParseFromString(packet[1:])
-            if msg.msg_type == sensor_net_pb2.Msg.COMMAND:
+            if msg.msg_type == sensor_pb2_pb2.Msg.COMMAND:
                 handle_command(sock, args.host, args.port, msg.command_msg, my_id)
             else:
                 print("Unexpected message type rec'd")

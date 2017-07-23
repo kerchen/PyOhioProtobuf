@@ -1,7 +1,7 @@
 import binascii
 import threading
 import time
-import sensor_net_pb2
+import sensor_pb2_pb2
 import socket
 import SocketServer
 from collections import namedtuple
@@ -38,11 +38,11 @@ class UDPHandler(SocketServer.BaseRequestHandler):
         print("Packet from {0}:{1}".format(
                 self.client_address[0], self.client_address[1]))
         #print(binascii.hexlify(data[1:]))
-        msg = sensor_net_pb2.Msg()
+        msg = sensor_pb2_pb2.Msg()
         msg.ParseFromString(data[1:])
-        if msg.msg_type == sensor_net_pb2.Msg.CONNECT:
+        if msg.msg_type == sensor_pb2_pb2.Msg.CONNECT:
             handle_connect(msg.connect_msg, self.client_address)
-        elif msg.msg_type == sensor_net_pb2.Msg.REPORT:
+        elif msg.msg_type == sensor_pb2_pb2.Msg.REPORT:
             handle_report(msg.report_msg)
         else:
             print("Unknown message type.")
@@ -70,11 +70,11 @@ if __name__ == "__main__":
             print("{} node(s) attached".format(len(attached_nodes)))
         for n in attached_nodes:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            msg = sensor_net_pb2.Msg()
-            msg.msg_type = sensor_net_pb2.Msg.COMMAND
+            msg = sensor_pb2_pb2.Msg()
+            msg.msg_type = sensor_pb2_pb2.Msg.COMMAND
 
-            cmd_msg = sensor_net_pb2.Command()
-            cmd_msg.cmd_type = sensor_net_pb2.Command.REPORT_DATA
+            cmd_msg = sensor_pb2_pb2.Command()
+            cmd_msg.cmd_type = sensor_pb2_pb2.Command.REPORT_DATA
             cmd_name = 'REPORT'
 
             msg.command_msg.CopyFrom(cmd_msg)

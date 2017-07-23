@@ -1,7 +1,7 @@
 import argparse
 import binascii
 import random
-import sensor_net_pb2
+import sensor_pb2_pb2
 import socket
 import sys
 import time
@@ -49,11 +49,11 @@ def send_packet(sock, host, port, payload):
 
 def send_connect(sock, host, port, dev_id):
     ''' Sends a Connect message to the controller '''
-    con_msg = sensor_net_pb2.Connect()
+    con_msg = sensor_pb2_pb2.Connect()
     con_msg.dev_id.CopyFrom(dev_id)
 
-    msg = sensor_net_pb2.Msg()
-    msg.msg_type = sensor_net_pb2.Msg.CONNECT
+    msg = sensor_pb2_pb2.Msg()
+    msg.msg_type = sensor_pb2_pb2.Msg.CONNECT
     msg.connect_msg.CopyFrom(con_msg)
 
     payload = msg.SerializeToString()
@@ -61,13 +61,13 @@ def send_connect(sock, host, port, dev_id):
 
 def send_report(sock, host, port, dev_id, reading):
     ''' Sends a Report message to the controller '''
-    rpt_msg = sensor_net_pb2.Report()
+    rpt_msg = sensor_pb2_pb2.Report()
     rpt_msg.dev_id.CopyFrom(dev_id)
     rpt_msg.data.temperature = int(reading.temperature * 10)
     rpt_msg.data.humidity = int(reading.humidity * 10)
 
-    msg = sensor_net_pb2.Msg()
-    msg.msg_type = sensor_net_pb2.Msg.REPORT
+    msg = sensor_pb2_pb2.Msg()
+    msg.msg_type = sensor_pb2_pb2.Msg.REPORT
     msg.report_msg.CopyFrom(rpt_msg)
 
     payload = msg.SerializeToString()
@@ -76,7 +76,7 @@ def send_report(sock, host, port, dev_id, reading):
 def handle_command(sock, host, port, cmd_msg, dev_id):
     ''' Process Command messages coming from the controller. '''
     global last_reading
-    if cmd_msg.cmd_type == sensor_net_pb2.Command.REPORT_DATA:
+    if cmd_msg.cmd_type == sensor_pb2_pb2.Command.REPORT_DATA:
         print("Sending latest sensor reading.")
         send_report(sock, host, port, dev_id, last_reading)
     else:
@@ -95,7 +95,7 @@ def main():
     args = parse_args()
 
     # Create our ID object
-    my_id = sensor_net_pb2.DeviceIdentification()
+    my_id = sensor_pb2_pb2.DeviceIdentification()
     my_id.id = args.dev_id
     if args.dev_name:
         my_id.name = args.dev_name
@@ -113,9 +113,9 @@ def main():
         # See if we've gotten anything from the controller.
         try:
             packet = sock.recv(1024)
-            msg = sensor_net_pb2.Msg()
+            msg = sensor_pb2_pb2.Msg()
             msg.ParseFromString(packet[1:])
-            if msg.msg_type == sensor_net_pb2.Msg.COMMAND:
+            if msg.msg_type == sensor_pb2_pb2.Msg.COMMAND:
                 handle_command(sock, args.host, args.port, msg.command_msg, my_id)
             else:
                 print("Unexpected message type rec'd")
